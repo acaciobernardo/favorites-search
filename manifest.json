@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Pesquisa rápida de favoritos",
+  "description": "Pesquisa diretamente nos favoritos e no histórico recente do Microsoft Edge.",
+  "version": "1.0.2",
+  "permissions": [
+    "bookmarks",
+    "history"
+  ],
+  "action": {
+    "default_title": "Abrir pesquisa de favoritos"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  }
+}
