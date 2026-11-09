@@ -5,8 +5,6 @@ const results = document.querySelector("#results");
 const status = document.querySelector("#status");
 const clearButton = document.querySelector("#clear");
 const googleSearchButton = document.querySelector("#google-search");
-const profileButton = document.querySelector("#profile-button");
-const profileCard = document.querySelector("#profile-card");
 const shortcutGrid = document.querySelector("#shortcut-grid");
 const shortcutModal = document.querySelector("#shortcut-modal");
 const shortcutForm = document.querySelector("#shortcut-form");
@@ -297,10 +295,6 @@ searchInput.addEventListener("keydown", event => {
 });
 document.querySelector("#about").addEventListener("click", () => {
   status.textContent = "Esta extensão consulta diretamente os favoritos e o histórico deste perfil Edge.";
-});
-profileButton.addEventListener("click", () => {
-  const visible = profileCard.classList.toggle("visible");
-  profileButton.setAttribute("aria-expanded", String(visible));
 });
 document.querySelector("#shortcut-cancel").addEventListener("click", closeShortcutModal);
 renameShortcutButton.addEventListener("click", openRenameModal);

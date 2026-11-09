@@ -32,56 +32,6 @@
       padding: 18px 28px;
       color: var(--muted);
     }
-    .profile {
-      position: relative;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-left: auto;
-    }
-    .profile-name {
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 600;
-    }
-    .profile-button {
-      display: grid;
-      width: 38px;
-      height: 38px;
-      padding: 0;
-      place-items: center;
-      overflow: hidden;
-      border: 2px solid #fff;
-      border-radius: 50%;
-      background: #0b57d0;
-      box-shadow: 0 1px 4px rgb(32 33 36 / 25%);
-      color: white;
-      cursor: pointer;
-      font: inherit;
-      font-weight: bold;
-    }
-    .profile-button:hover { box-shadow: 0 1px 7px rgb(32 33 36 / 35%); }
-    .profile-button img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .profile-card {
-      position: absolute;
-      z-index: 1;
-      top: 48px;
-      right: 0;
-      display: none;
-      width: 260px;
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--surface);
-      box-shadow: 0 4px 18px rgb(32 33 36 / 18%);
-    }
-    .profile-card.visible { display: block; }
-    .profile-card strong { display: block; color: var(--text); }
-    .profile-card span { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; }
     header button {
       border: 0;
       background: transparent;
@@ -354,16 +304,6 @@
 <body>
   <header>
     <button id="about" type="button">Como funciona?</button>
-    <div class="profile">
-      <span class="profile-name">Bernardo Jesus, Acácio</span>
-      <button id="profile-button" class="profile-button" type="button" aria-label="Abrir perfil" aria-expanded="false">
-        <span aria-hidden="true">BA</span>
-      </button>
-      <div id="profile-card" class="profile-card" role="dialog" aria-label="Perfil do utilizador">
-        <strong>Bernardo Jesus, Acácio</strong>
-        <span>Perfil do Office 365</span>
-      </div>
-    </div>
   </header>
 
   <main>
