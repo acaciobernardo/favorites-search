@@ -76,15 +76,6 @@
       color: var(--text);
       font: 17px Arial, sans-serif;
     }
-    .clear {
-      display: none;
-      border: 0;
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-      font-size: 20px;
-    }
-    .clear.visible { display: block; }
     .add-favorite, .result-add {
       border: 1px solid var(--line);
       border-radius: 50%;
@@ -384,7 +375,6 @@
       <div class="search-wrap">
         <span class="search-icon" aria-hidden="true">⌕</span>
         <input id="search" type="search" autocomplete="off" placeholder="Pesquisar nos favoritos e histórico" aria-label="Pesquisar">
-        <button id="clear" class="clear" type="button" aria-label="Limpar pesquisa">×</button>
         <button id="add-favorite" class="add-favorite" type="button" title="Adicionar favorito" aria-label="Adicionar favorito">+</button>
       </div>
       <button id="google-search" class="google-search-button" type="button">Pesquisar no Google</button>

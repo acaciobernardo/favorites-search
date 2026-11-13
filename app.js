@@ -3,7 +3,6 @@ let history = [];
 const searchInput = document.querySelector("#search");
 const results = document.querySelector("#results");
 const status = document.querySelector("#status");
-const clearButton = document.querySelector("#clear");
 const googleSearchButton = document.querySelector("#google-search");
 const shortcutGrid = document.querySelector("#shortcut-grid");
 const shortcutModal = document.querySelector("#shortcut-modal");
@@ -496,7 +495,6 @@ function render() {
   document.querySelector("#favorites-count").textContent = `(${favoriteMatches.length})`;
   document.querySelector("#history-count").textContent = `(${historyMatches.length})`;
   status.textContent = query ? `Resultados para "${query}"` : "A mostrar os itens mais recentes.";
-  clearButton.classList.toggle("visible", Boolean(query));
 }
 
 async function loadBrowserData() {
@@ -534,7 +532,6 @@ googleSearchButton.addEventListener("click", () => {
   if (query) window.location.href = `https://www.google.pt/search?q=${encodeURIComponent(query)}`;
   else searchInput.focus();
 });
-clearButton.addEventListener("click", () => { searchInput.value = ""; render(); searchInput.focus(); });
 searchInput.addEventListener("input", render);
 searchInput.addEventListener("keydown", event => {
   if (event.key === "Enter") {
