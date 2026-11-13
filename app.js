@@ -209,7 +209,7 @@ function getDescription(url) {
 }
 
 function stripQuery(url) {
-  return url.split("?")[0];
+  return url.split(/[?#]/)[0];
 }
 
 function getHostname(url) {
