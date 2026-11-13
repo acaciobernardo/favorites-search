@@ -208,6 +208,10 @@ function getDescription(url) {
   return descriptions[url]?.text || "";
 }
 
+function stripQuery(url) {
+  return url.split("?")[0];
+}
+
 function getHostname(url) {
   try {
     return new URL(url).hostname;
@@ -378,7 +382,7 @@ function renderList(target, items, type) {
     target.appendChild(empty);
     return;
   }
-  const favoriteUrls = new Set(favorites.map(favorite => favorite.url));
+  const favoriteUrls = new Set(favorites.map(favorite => stripQuery(favorite.url)));
   const groups = new Map();
   items.forEach(item => {
     const host = getHostname(item.url);
@@ -403,7 +407,7 @@ function renderList(target, items, type) {
       url.className = "result-url";
       url.textContent = item.url;
       link.append(title, url);
-      if (type !== "favoritos" && !favoriteUrls.has(item.url)) {
+      if (type !== "favoritos" && !favoriteUrls.has(stripQuery(item.url))) {
         link.classList.add("has-add");
         const add = document.createElement("button");
         add.type = "button";
