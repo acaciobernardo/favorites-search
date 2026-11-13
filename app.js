@@ -378,6 +378,7 @@ function renderList(target, items, type) {
     target.appendChild(empty);
     return;
   }
+  const favoriteUrls = new Set(favorites.map(favorite => favorite.url));
   const groups = new Map();
   items.forEach(item => {
     const host = getHostname(item.url);
@@ -402,7 +403,7 @@ function renderList(target, items, type) {
       url.className = "result-url";
       url.textContent = item.url;
       link.append(title, url);
-      if (type !== "favoritos") {
+      if (type !== "favoritos" && !favoriteUrls.has(item.url)) {
         link.classList.add("has-add");
         const add = document.createElement("button");
         add.type = "button";
