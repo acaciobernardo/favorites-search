@@ -24,6 +24,11 @@ const RETRY_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 let descriptions = {};
 let selectedShortcut = null;
 let renameTarget = null;
+const favoriteModal = document.querySelector("#favorite-modal");
+const favoriteForm = document.querySelector("#favorite-form");
+const favoriteUrlInput = document.querySelector("#favorite-url");
+const favoriteError = document.querySelector("#favorite-error");
+const ORGANIZED_ROOT = "Organizados";
 
 function normalize(value) {
   return String(value || "").toLocaleLowerCase("pt-PT").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -283,6 +288,87 @@ async function loadMissingDescriptions(items) {
   });
 }
 
+function parseTitle(doc) {
+  const og = doc.querySelector('meta[property="og:title" i]')?.getAttribute("content");
+  return (og || doc.querySelector("title")?.textContent || "").replace(/\s+/g, " ").trim().slice(0, 150);
+}
+
+async function fetchPageInfo(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(url, { credentials: "include", signal: controller.signal });
+    if (!response.ok || !/html/i.test(response.headers.get("content-type") || "")) return {};
+    const doc = new DOMParser().parseFromString((await response.text()).slice(0, 300000), "text/html");
+    return { title: parseTitle(doc), description: extractDescription(doc) };
+  } catch {
+    return {};
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function baseDomain(hostname) {
+  const parts = hostname.replace(/^www\./, "").split(".");
+  if (parts.length <= 2) return parts.join(".");
+  const secondLevel = /^(co|com|org|net|gov|edu|ac)$/.test(parts[parts.length - 2]);
+  return parts.slice(secondLevel ? -3 : -2).join(".");
+}
+
+function collectBookmarks(node, output = []) {
+  if (node.url) output.push(node);
+  (node.children || []).forEach(child => collectBookmarks(child, output));
+  return output;
+}
+
+// Escolhe a pasta onde já existem favoritos do mesmo domínio; caso contrário, cria uma pasta por domínio.
+async function findOrCreateFolder(tree, hostname) {
+  const domain = baseDomain(hostname);
+  const bookmarks = tree.flatMap(root => collectBookmarks(root));
+  const counts = new Map();
+  bookmarks.forEach(bookmark => {
+    try {
+      if (baseDomain(new URL(bookmark.url).hostname) !== domain) return;
+    } catch {
+      return;
+    }
+    counts.set(bookmark.parentId, (counts.get(bookmark.parentId) || 0) + 1);
+  });
+  const best = [...counts].sort((x, y) => y[1] - x[1])[0];
+  if (best) return best[0];
+
+  const label = domain.split(".")[0];
+  const existing = findFolderByTitle(tree, domain) || findFolderByTitle(tree, label);
+  if (existing) return existing.id;
+
+  const bar = findBookmarkBar(tree);
+  if (!bar) throw new Error("Barra de favoritos não encontrada.");
+  const root = findFolderByTitle(bar.children || [], ORGANIZED_ROOT)
+    || await chrome.bookmarks.create({ parentId: bar.id, title: ORGANIZED_ROOT });
+  return (await chrome.bookmarks.create({ parentId: root.id, title: domain })).id;
+}
+
+async function addFavorite(rawUrl, fallbackTitle = "") {
+  const url = new URL(rawUrl);
+  if (!/^https?:$/.test(url.protocol)) throw new Error("O link deve começar por http:// ou https://.");
+  if (typeof chrome === "undefined" || !chrome.bookmarks) throw new Error("A página precisa de ser aberta através da extensão Edge.");
+  const duplicate = await chrome.bookmarks.search({ url: url.href });
+  if (duplicate.length) throw new Error("Este link já existe nos favoritos.");
+  const info = await fetchPageInfo(url.href);
+  const tree = await chrome.bookmarks.getTree();
+  const parentId = await findOrCreateFolder(tree, url.hostname);
+  await chrome.bookmarks.create({
+    parentId,
+    title: info.title || fallbackTitle || url.hostname,
+    url: url.href
+  });
+  if (info.description) {
+    descriptions[url.href] = { text: info.description, checked: Date.now() };
+    await saveDescriptions();
+  }
+  await loadBrowserData();
+}
+
 function renderList(target, items, type) {
   target.replaceChildren();
   if (!items.length) {
@@ -316,6 +402,28 @@ function renderList(target, items, type) {
       url.className = "result-url";
       url.textContent = item.url;
       link.append(title, url);
+      if (type !== "favoritos") {
+        link.classList.add("has-add");
+        const add = document.createElement("button");
+        add.type = "button";
+        add.className = "result-add";
+        add.textContent = "+";
+        add.title = "Adicionar aos favoritos (organizado)";
+        add.setAttribute("aria-label", "Adicionar aos favoritos");
+        add.addEventListener("click", async event => {
+          event.preventDefault();
+          event.stopPropagation();
+          add.disabled = true;
+          try {
+            await addFavorite(item.url, item.title);
+            status.textContent = "Favorito adicionado.";
+          } catch (error) {
+            add.disabled = false;
+            status.textContent = error.message || "Não foi possível adicionar o favorito.";
+          }
+        });
+        link.appendChild(add);
+      }
       const description = getDescription(item.url);
       if (description) {
         const descriptionElement = document.createElement("div");
@@ -482,6 +590,27 @@ shortcutForm.addEventListener("submit", async event => {
   } catch (error) {
     shortcutError.textContent = "Não foi possível guardar o atalho.";
     console.error(error);
+  }
+});
+document.querySelector("#add-favorite").addEventListener("click", () => {
+  favoriteError.textContent = "";
+  favoriteUrlInput.value = "";
+  favoriteModal.classList.remove("hidden");
+  favoriteUrlInput.focus();
+});
+document.querySelector("#favorite-cancel").addEventListener("click", () => favoriteModal.classList.add("hidden"));
+favoriteModal.addEventListener("click", event => {
+  if (event.target === favoriteModal) favoriteModal.classList.add("hidden");
+});
+favoriteForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  favoriteError.textContent = "A adicionar…";
+  try {
+    await addFavorite(favoriteUrlInput.value.trim());
+    favoriteModal.classList.add("hidden");
+    status.textContent = "Favorito adicionado.";
+  } catch (error) {
+    favoriteError.textContent = error instanceof TypeError ? "Introduza um link válido." : error.message;
   }
 });
 loadBrowserData();

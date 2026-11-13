@@ -91,6 +91,20 @@
       font-size: 20px;
     }
     .clear.visible { display: block; }
+    .add-favorite, .result-add {
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: var(--surface);
+      color: var(--blue);
+      cursor: pointer;
+      font: 18px/1 Arial, sans-serif;
+    }
+    .add-favorite { flex: none; width: 30px; height: 30px; }
+    .add-favorite:hover, .result-add:hover { background: #e8f0fe; }
+    .result { position: relative; }
+    .result-add { position: absolute; top: 10px; right: 6px; width: 26px; height: 26px; }
+    .result-add:disabled { color: var(--muted); cursor: default; }
+    .result.has-add { padding-right: 40px; }
     .shortcut-grid {
       display: grid;
       grid-template-columns: repeat(10, minmax(60px, 1fr));
@@ -339,6 +353,7 @@
         <span class="search-icon" aria-hidden="true">⌕</span>
         <input id="search" type="search" autocomplete="off" placeholder="Pesquisar nos favoritos e histórico" aria-label="Pesquisar">
         <button id="clear" class="clear" type="button" aria-label="Limpar pesquisa">×</button>
+        <button id="add-favorite" class="add-favorite" type="button" title="Adicionar favorito" aria-label="Adicionar favorito">+</button>
       </div>
       <button id="google-search" class="google-search-button" type="button">Pesquisar no Google</button>
     </form>
@@ -375,6 +390,18 @@
       </div>
     </form>
   </div>
+  <div id="favorite-modal" class="modal-backdrop hidden" role="presentation">
+    <form id="favorite-form" class="modal" role="dialog" aria-modal="true" aria-labelledby="favorite-modal-title">
+      <h2 id="favorite-modal-title">Adicionar favorito</h2>
+      <label for="favorite-url">Link da página</label>
+      <input id="favorite-url" type="url" inputmode="url" placeholder="https://exemplo.pt" autocomplete="off" required>
+      <p id="favorite-error" class="modal-error" aria-live="polite"></p>
+      <div class="modal-actions">
+        <button id="favorite-cancel" type="button">Cancelar</button>
+        <button class="confirm" type="submit">Adicionar</button>
+      </div>
+    </form>
+  </div>
   <div id="shortcut-modal" class="modal-backdrop hidden" role="presentation">
     <form id="shortcut-form" class="modal" role="dialog" aria-modal="true" aria-labelledby="shortcut-modal-title">
       <h2 id="shortcut-modal-title">Adicionar atalho</h2>
@@ -388,6 +415,6 @@
     </form>
   </div>
 
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
