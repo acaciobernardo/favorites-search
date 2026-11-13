@@ -17,6 +17,11 @@ const renameModal = document.querySelector("#rename-modal");
 const renameForm = document.querySelector("#rename-form");
 const shortcutTitleInput = document.querySelector("#shortcut-title-input");
 const renameError = document.querySelector("#rename-error");
+const DESCRIPTIONS_KEY = "pageDescriptions";
+const MAX_DESCRIPTION = 255;
+const MAX_RESULTS = 60;
+const RETRY_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+let descriptions = {};
 let selectedShortcut = null;
 let renameTarget = null;
 
@@ -194,13 +199,88 @@ function renderShortcuts(items) {
   shortcutGrid.appendChild(addButton);
 }
 
+function getDescription(url) {
+  return descriptions[url]?.text || "";
+}
+
+function getHostname(url) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
 function findMatches(items, query) {
   const terms = normalize(query).split(/\s+/).filter(Boolean);
-  if (!terms.length) return items.slice(0, 8);
+  if (!terms.length) return items.slice(0, MAX_RESULTS);
   return items.filter(item => {
-    const haystack = normalize(`${item.title} ${item.url} ${item.folder || ""}`);
+    const haystack = normalize(`${item.title} ${item.url} ${item.folder || ""} ${getDescription(item.url)}`);
     return terms.every(term => haystack.includes(term));
-  }).slice(0, 8);
+  }).slice(0, MAX_RESULTS);
+}
+
+function extractDescription(doc) {
+  const selectors = [
+    'meta[name="description" i]',
+    'meta[property="og:description" i]',
+    'meta[name="twitter:description" i]'
+  ];
+  for (const selector of selectors) {
+    const content = doc.querySelector(selector)?.getAttribute("content")?.replace(/\s+/g, " ").trim();
+    if (content) return content.slice(0, MAX_DESCRIPTION);
+  }
+  return "";
+}
+
+async function fetchDescription(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(url, { credentials: "include", signal: controller.signal });
+    if (!response.ok || !/html/i.test(response.headers.get("content-type") || "")) return "";
+    const html = (await response.text()).slice(0, 300000);
+    return extractDescription(new DOMParser().parseFromString(html, "text/html"));
+  } catch {
+    return "";
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function saveDescriptions() {
+  try {
+    await chrome.storage.local.set({ [DESCRIPTIONS_KEY]: descriptions });
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+let descriptionsJob = null;
+async function loadMissingDescriptions(items) {
+  const now = Date.now();
+  const pending = [...new Set(items.map(item => item.url))].filter(url => {
+    const entry = descriptions[url];
+    return !entry || (!entry.text && now - entry.checked > RETRY_AFTER_MS);
+  });
+  if (!pending.length || descriptionsJob) return;
+  let done = 0;
+  const worker = async () => {
+    while (pending.length) {
+      const url = pending.shift();
+      descriptions[url] = { text: await fetchDescription(url), checked: Date.now() };
+      done += 1;
+      if (done % 10 === 0) {
+        await saveDescriptions();
+        render();
+      }
+    }
+  };
+  descriptionsJob = Promise.all(Array.from({ length: 4 }, worker)).then(async () => {
+    await saveDescriptions();
+    descriptionsJob = null;
+    render();
+  });
 }
 
 function renderList(target, items, type) {
@@ -212,21 +292,45 @@ function renderList(target, items, type) {
     target.appendChild(empty);
     return;
   }
+  const groups = new Map();
   items.forEach(item => {
-    const link = document.createElement("a");
-    link.className = "result";
-    link.href = item.url;
-    const title = document.createElement("div");
-    title.className = "result-title";
-    title.textContent = item.title || item.url;
-    const url = document.createElement("div");
-    url.className = "result-url";
-    url.textContent = item.url;
-    const meta = document.createElement("div");
-    meta.className = "result-meta";
-    meta.textContent = item.folder || item.date || "";
-    link.append(title, url, meta);
-    target.appendChild(link);
+    const host = getHostname(item.url);
+    if (!groups.has(host)) groups.set(host, []);
+    groups.get(host).push(item);
+  });
+  groups.forEach((groupItems, host) => {
+    const box = document.createElement("section");
+    box.className = "domain-box";
+    const heading = document.createElement("h3");
+    heading.className = "domain-title";
+    heading.textContent = `${host} (${groupItems.length})`;
+    box.appendChild(heading);
+    groupItems.forEach(item => {
+      const link = document.createElement("a");
+      link.className = "result";
+      link.href = item.url;
+      const title = document.createElement("div");
+      title.className = "result-title";
+      title.textContent = item.title || item.url;
+      const url = document.createElement("div");
+      url.className = "result-url";
+      url.textContent = item.url;
+      link.append(title, url);
+      const description = getDescription(item.url);
+      if (description) {
+        const descriptionElement = document.createElement("div");
+        descriptionElement.className = "result-description";
+        descriptionElement.textContent = description;
+        descriptionElement.title = description;
+        link.appendChild(descriptionElement);
+      }
+      const meta = document.createElement("div");
+      meta.className = "result-meta";
+      meta.textContent = item.folder || item.date || "";
+      link.appendChild(meta);
+      box.appendChild(link);
+    });
+    target.appendChild(box);
   });
 }
 
@@ -263,7 +367,9 @@ async function loadBrowserData() {
       date: item.lastVisitTime ? new Date(item.lastVisitTime).toLocaleString("pt-PT") : ""
     }));
     status.textContent = `${favorites.length} favoritos e ${history.length} entradas do histórico carregados.`;
+    descriptions = (await chrome.storage.local.get(DESCRIPTIONS_KEY))[DESCRIPTIONS_KEY] || {};
     render();
+    loadMissingDescriptions([...favorites, ...history]);
   } catch (error) {
     status.textContent = "Não foi possível consultar os dados do Edge. Verifique as permissões da extensão.";
     console.error(error);
