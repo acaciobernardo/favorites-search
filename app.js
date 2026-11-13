@@ -20,8 +20,10 @@ const renameError = document.querySelector("#rename-error");
 const DESCRIPTIONS_KEY = "pageDescriptions";
 const MAX_DESCRIPTION = 255;
 const MAX_RESULTS = 60;
+const VISIBLE_GROUP_ITEMS = 3;
 const RETRY_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 let descriptions = {};
+const expandedGroups = new WeakMap();
 let selectedShortcut = null;
 let renameTarget = null;
 const favoriteModal = document.querySelector("#favorite-modal");
@@ -383,6 +385,8 @@ function renderList(target, items, type) {
     return;
   }
   const favoriteUrls = new Set(favorites.map(favorite => stripQuery(favorite.url)));
+  if (!expandedGroups.has(target)) expandedGroups.set(target, new Set());
+  const expanded = expandedGroups.get(target);
   const groups = new Map();
   items.forEach(item => {
     const host = getHostname(item.url);
@@ -396,7 +400,11 @@ function renderList(target, items, type) {
     heading.className = "domain-title";
     heading.textContent = `${host} (${groupItems.length})`;
     box.appendChild(heading);
-    groupItems.forEach(item => {
+    const hasMore = groupItems.length > VISIBLE_GROUP_ITEMS;
+    const extraItems = document.createElement("div");
+    const isExpanded = hasMore && expanded.has(host);
+    extraItems.hidden = !isExpanded;
+    groupItems.forEach((item, index) => {
       const link = document.createElement("a");
       link.className = "result";
       link.href = item.url;
@@ -441,8 +449,39 @@ function renderList(target, items, type) {
       meta.className = "result-meta";
       meta.textContent = item.folder || item.date || "";
       link.appendChild(meta);
-      box.appendChild(link);
+      (index < VISIBLE_GROUP_ITEMS ? box : extraItems).appendChild(link);
     });
+    if (hasMore) {
+      const preview = document.createElement("div");
+      preview.className = "domain-preview";
+      preview.setAttribute("aria-hidden", "true");
+      preview.hidden = isExpanded;
+      const previewTitle = document.createElement("div");
+      previewTitle.className = "result-title";
+      previewTitle.textContent = groupItems[VISIBLE_GROUP_ITEMS].title || groupItems[VISIBLE_GROUP_ITEMS].url;
+      const previewUrl = document.createElement("div");
+      previewUrl.className = "result-url";
+      previewUrl.textContent = groupItems[VISIBLE_GROUP_ITEMS].url;
+      preview.append(previewTitle, previewUrl);
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "domain-toggle";
+      const updateToggle = open => {
+        extraItems.hidden = !open;
+        preview.hidden = open;
+        toggle.setAttribute("aria-expanded", String(open));
+        toggle.setAttribute("aria-label", `${open ? "Recolher" : "Expandir"} resultados de ${host}`);
+        toggle.title = open ? "Recolher resultados" : "Expandir resultados";
+      };
+      updateToggle(isExpanded);
+      toggle.addEventListener("click", () => {
+        const open = extraItems.hidden;
+        if (open) expanded.add(host);
+        else expanded.delete(host);
+        updateToggle(open);
+      });
+      box.append(preview, extraItems, toggle);
+    }
     target.appendChild(box);
   });
 }

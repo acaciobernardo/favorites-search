@@ -289,7 +289,38 @@
       font-weight: bold;
       overflow-wrap: anywhere;
     }
-    .domain-box .result:first-of-type { border-top: 0; }
+    .domain-box > .result:first-of-type { border-top: 0; }
+    .domain-preview {
+      height: 30px;
+      overflow: hidden;
+      padding: 8px 4px 0;
+      border-top: 1px solid #f0f0f0;
+      mask-image: linear-gradient(to bottom, #000, transparent);
+      pointer-events: none;
+    }
+    .domain-preview[hidden] { display: none; }
+    .domain-toggle {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      margin: 0 auto 4px;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .domain-toggle:hover { background: #f1f3f4; }
+    .domain-toggle::before {
+      width: 7px;
+      height: 7px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      content: "";
+      transform: translateY(-2px) rotate(45deg);
+    }
+    .domain-toggle[aria-expanded="true"]::before { transform: translateY(2px) rotate(225deg); }
     .result-description {
       display: -webkit-box;
       overflow: hidden;
