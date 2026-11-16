@@ -28,6 +28,8 @@ let renameTarget = null;
 const favoriteModal = document.querySelector("#favorite-modal");
 const favoriteForm = document.querySelector("#favorite-form");
 const favoriteUrlInput = document.querySelector("#favorite-url");
+const favoriteNameInput = document.querySelector("#favorite-name");
+const addedMessage = document.querySelector("#added-message");
 const favoriteError = document.querySelector("#favorite-error");
 const ORGANIZED_ROOT = "Organizados";
 
@@ -326,8 +328,35 @@ function collectBookmarks(node, output = []) {
   return output;
 }
 
-// Escolhe a pasta onde já existem favoritos do mesmo domínio; caso contrário, cria uma pasta por domínio.
-async function findOrCreateFolder(tree, hostname) {
+function collectFolders(node, path = [], output = []) {
+  if (node.url) return output;
+  const next = node.title && node.parentId !== undefined ? [...path, node.title] : path;
+  if (node.title && node.parentId !== undefined) output.push({ id: node.id, title: node.title, path: next });
+  (node.children || []).forEach(child => collectFolders(child, next, output));
+  return output;
+}
+
+function folderPath(tree, id) {
+  return collectFolders({ children: tree, id: "root" }).find(folder => folder.id === id)?.path || [];
+}
+
+// Infere a pasta a partir do nome: a pasta mais específica cujo título aparece no nome.
+function findFolderByName(tree, name) {
+  const text = ` ${normalize(name).replace(/[^a-z0-9]+/g, " ").trim()} `;
+  let best = null;
+  collectFolders({ children: tree, id: "root" }).forEach(folder => {
+    const title = normalize(folder.title).replace(/[^a-z0-9]+/g, " ").trim();
+    if (title.length < 3 || !text.includes(` ${title} `)) return;
+    const score = title.length * 10 + folder.path.length;
+    if (!best || score > best.score) best = { id: folder.id, score };
+  });
+  return best?.id || null;
+}
+
+// Prefere a pasta indicada pelo nome; depois a que já tem favoritos do mesmo domínio; por fim cria uma pasta por domínio.
+async function findOrCreateFolder(tree, hostname, name = "") {
+  const byName = findFolderByName(tree, name);
+  if (byName) return byName;
   const domain = baseDomain(hostname);
   const bookmarks = tree.flatMap(root => collectBookmarks(root));
   const counts = new Map();
@@ -353,25 +382,41 @@ async function findOrCreateFolder(tree, hostname) {
   return (await chrome.bookmarks.create({ parentId: root.id, title: domain })).id;
 }
 
-async function addFavorite(rawUrl, fallbackTitle = "") {
+async function addFavorite(rawUrl, name = "") {
   const url = new URL(rawUrl);
   if (!/^https?:$/.test(url.protocol)) throw new Error("O link deve começar por http:// ou https://.");
   if (typeof chrome === "undefined" || !chrome.bookmarks) throw new Error("A página precisa de ser aberta através da extensão Edge.");
   const duplicate = await chrome.bookmarks.search({ url: url.href });
   if (duplicate.length) throw new Error("Este link já existe nos favoritos.");
   const info = await fetchPageInfo(url.href);
+  const title = name || info.title || url.hostname;
   const tree = await chrome.bookmarks.getTree();
-  const parentId = await findOrCreateFolder(tree, url.hostname);
-  await chrome.bookmarks.create({
-    parentId,
-    title: info.title || fallbackTitle || url.hostname,
-    url: url.href
-  });
+  const parentId = await findOrCreateFolder(tree, url.hostname, title);
+  await chrome.bookmarks.create({ parentId, title, url: url.href });
+  const path = folderPath(await chrome.bookmarks.getTree(), parentId);
   if (info.description) {
     descriptions[url.href] = { text: info.description, checked: Date.now() };
     await saveDescriptions();
   }
   await loadBrowserData();
+  showAddedMessage(path, title, url.href);
+}
+
+function showAddedMessage(path, title, href) {
+  addedMessage.replaceChildren(`Adicionado em ${path.join(" / ")} / `);
+  const link = document.createElement("a");
+  link.href = href;
+  link.textContent = title;
+  addedMessage.appendChild(link);
+  addedMessage.hidden = false;
+}
+
+function openFavoriteModal(url = "", name = "") {
+  favoriteError.textContent = "";
+  favoriteUrlInput.value = url;
+  favoriteNameInput.value = name;
+  favoriteModal.classList.remove("hidden");
+  favoriteNameInput.focus();
 }
 
 function renderList(target, items, type) {
@@ -422,17 +467,10 @@ function renderList(target, items, type) {
         add.textContent = "+";
         add.title = "Adicionar aos favoritos (organizado)";
         add.setAttribute("aria-label", "Adicionar aos favoritos");
-        add.addEventListener("click", async event => {
+        add.addEventListener("click", event => {
           event.preventDefault();
           event.stopPropagation();
-          add.disabled = true;
-          try {
-            await addFavorite(item.url, item.title);
-            status.textContent = "Favorito adicionado.";
-          } catch (error) {
-            add.disabled = false;
-            status.textContent = error.message || "Não foi possível adicionar o favorito.";
-          }
+          openFavoriteModal(item.url, item.title);
         });
         link.appendChild(add);
       }
@@ -633,12 +671,7 @@ shortcutForm.addEventListener("submit", async event => {
     console.error(error);
   }
 });
-document.querySelector("#add-favorite").addEventListener("click", () => {
-  favoriteError.textContent = "";
-  favoriteUrlInput.value = "";
-  favoriteModal.classList.remove("hidden");
-  favoriteUrlInput.focus();
-});
+document.querySelector("#add-favorite").addEventListener("click", () => openFavoriteModal());
 document.querySelector("#favorite-cancel").addEventListener("click", () => favoriteModal.classList.add("hidden"));
 favoriteModal.addEventListener("click", event => {
   if (event.target === favoriteModal) favoriteModal.classList.add("hidden");
@@ -647,9 +680,8 @@ favoriteForm.addEventListener("submit", async event => {
   event.preventDefault();
   favoriteError.textContent = "A adicionar…";
   try {
-    await addFavorite(favoriteUrlInput.value.trim());
+    await addFavorite(favoriteUrlInput.value.trim(), favoriteNameInput.value.trim());
     favoriteModal.classList.add("hidden");
-    status.textContent = "Favorito adicionado.";
   } catch (error) {
     favoriteError.textContent = error instanceof TypeError ? "Introduza um link válido." : error.message;
   }

@@ -243,6 +243,8 @@
       text-align: center;
     }
 
+    .added-message { margin: 6px 0; font-size: 14px; }
+    .added-message a { font-weight: 600; }
     #status {
       min-height: 20px;
       margin: 22px 0 8px;
@@ -384,6 +386,7 @@
     <p class="data-source">A consultar diretamente os favoritos e o histórico deste Edge.</p>
 
     <div id="status" aria-live="polite"></div>
+    <div id="added-message" class="added-message" aria-live="polite" hidden></div>
     <section id="results" class="results hidden" aria-label="Resultados">
       <div class="panel">
         <h2>Favoritos <span id="favorites-count" class="count"></span></h2>
@@ -415,6 +418,8 @@
   <div id="favorite-modal" class="modal-backdrop hidden" role="presentation">
     <form id="favorite-form" class="modal" role="dialog" aria-modal="true" aria-labelledby="favorite-modal-title">
       <h2 id="favorite-modal-title">Adicionar favorito</h2>
+      <label for="favorite-name">Nome do link</label>
+      <input id="favorite-name" type="text" placeholder="Ex.: Faturas Vodafone" autocomplete="off" required>
       <label for="favorite-url">Link da página</label>
       <input id="favorite-url" type="url" inputmode="url" placeholder="https://exemplo.pt" autocomplete="off" required>
       <p id="favorite-error" class="modal-error" aria-live="polite"></p>
