@@ -243,7 +243,7 @@
       text-align: center;
     }
 
-    .added-message { margin: 6px 0; font-size: 14px; }
+    .added-message { margin: 10px 0; text-align: center; font-size: 14px; }
     .added-message a { font-weight: 600; }
     #status {
       min-height: 20px;
@@ -381,12 +381,12 @@
       </div>
       <button id="google-search" class="google-search-button" type="button">Pesquisar no Google</button>
     </form>
+    <div id="added-message" class="added-message" aria-live="polite" hidden></div>
 
     <nav id="shortcut-grid" class="shortcut-grid" aria-label="Atalhos dos favoritos"></nav>
     <p class="data-source">A consultar diretamente os favoritos e o histórico deste Edge.</p>
 
     <div id="status" aria-live="polite"></div>
-    <div id="added-message" class="added-message" aria-live="polite" hidden></div>
     <section id="results" class="results hidden" aria-label="Resultados">
       <div class="panel">
         <h2>Favoritos <span id="favorites-count" class="count"></span></h2>
