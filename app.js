@@ -671,7 +671,13 @@ shortcutForm.addEventListener("submit", async event => {
     console.error(error);
   }
 });
-document.querySelector("#add-favorite").addEventListener("click", () => openFavoriteModal());
+document.querySelector("#add-favorite").addEventListener("click", () => {
+  const query = searchInput.value.trim();
+  if (/^https?:\/\//i.test(query)) return openFavoriteModal(query);
+  const saved = new Set(favorites.map(item => stripQuery(item.url)));
+  const match = findMatches(history, query).find(item => !saved.has(stripQuery(item.url)));
+  openFavoriteModal(match?.url || "", match?.title || "");
+});
 document.querySelector("#favorite-cancel").addEventListener("click", () => favoriteModal.classList.add("hidden"));
 favoriteModal.addEventListener("click", event => {
   if (event.target === favoriteModal) favoriteModal.classList.add("hidden");
