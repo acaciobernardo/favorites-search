@@ -15,6 +15,7 @@ const removeShortcutButton = document.querySelector("#remove-shortcut");
 const renameModal = document.querySelector("#rename-modal");
 const renameForm = document.querySelector("#rename-form");
 const shortcutTitleInput = document.querySelector("#shortcut-title-input");
+const shortcutUrlEditInput = document.querySelector("#shortcut-url-edit");
 const renameError = document.querySelector("#rename-error");
 const DESCRIPTIONS_KEY = "pageDescriptions";
 const MAX_DESCRIPTION = 255;
@@ -117,6 +118,7 @@ function openRenameModal() {
   if (!selectedShortcut) return;
   renameTarget = selectedShortcut;
   shortcutTitleInput.value = renameTarget.title || "";
+  shortcutUrlEditInput.value = renameTarget.url || "";
   renameError.textContent = "";
   closeShortcutMenu();
   renameModal.classList.remove("hidden");
@@ -147,10 +149,11 @@ function getShortcutIconSources(item, faviconUrl) {
       </svg>`;
     return [`data:image/svg+xml,${encodeURIComponent(mapfreIcon)}`];
   }
+  const hostname = faviconUrl.hostname;
   return [
-    `${faviconUrl.origin}/favicon.ico`,
-    `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(item.url)}&sz=64`,
-    `https://icons.duckduckgo.com/ip3/${encodeURIComponent(faviconUrl.hostname)}.ico`
+    `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`,
+    `https://icons.duckduckgo.com/ip3/${encodeURIComponent(hostname)}.ico`,
+    `${faviconUrl.origin}/favicon.ico`
   ];
 }
 
@@ -598,14 +601,26 @@ renameModal.addEventListener("click", event => {
 renameForm.addEventListener("submit", async event => {
   event.preventDefault();
   const title = shortcutTitleInput.value.trim();
-  if (!title || !renameTarget) return;
+  const urlStr = shortcutUrlEditInput.value.trim();
+  if (!title || !renameTarget || !urlStr) return;
+  let url;
   try {
-    await chrome.bookmarks.update(renameTarget.id, { title });
+    url = new URL(urlStr);
+  } catch {
+    renameError.textContent = "Introduza um link válido.";
+    return;
+  }
+  if (!/^https?:$/.test(url.protocol)) {
+    renameError.textContent = "O link deve começar por http:// ou https://.";
+    return;
+  }
+  try {
+    await chrome.bookmarks.update(renameTarget.id, { title, url: url.href });
     closeRenameModal();
     renameTarget = null;
     await loadBrowserData();
   } catch (error) {
-    renameError.textContent = "Não foi possível mudar o nome.";
+    renameError.textContent = "Não foi possível guardar as alterações.";
     console.error(error);
   }
 });
@@ -614,14 +629,7 @@ removeShortcutButton.addEventListener("click", async () => {
   const item = selectedShortcut;
   closeShortcutMenu();
   try {
-    const tree = await chrome.bookmarks.getTree();
-    const shortcutsFolder = findFolderByTitle(tree, "favorites-search");
-    const bookmark = (shortcutsFolder?.children || []).find(child => child.url === item.url);
-    if (!bookmark) {
-      status.textContent = "O atalho já não existe nos favoritos.";
-      return;
-    }
-    await chrome.bookmarks.remove(bookmark.id);
+    await chrome.bookmarks.remove(item.id);
     await loadBrowserData();
   } catch (error) {
     status.textContent = "Não foi possível remover o atalho.";
@@ -692,5 +700,15 @@ favoriteForm.addEventListener("submit", async event => {
     favoriteError.textContent = error instanceof TypeError ? "Introduza um link válido." : error.message;
   }
 });
+function setupBookmarkListeners() {
+  if (typeof chrome === "undefined" || !chrome.bookmarks) return;
+  const reload = () => loadBrowserData();
+  chrome.bookmarks.onCreated.addListener(reload);
+  chrome.bookmarks.onRemoved.addListener(reload);
+  chrome.bookmarks.onChanged.addListener(reload);
+  chrome.bookmarks.onMoved.addListener(reload);
+}
+
 loadBrowserData();
+setupBookmarkListeners();
 searchInput.focus();
