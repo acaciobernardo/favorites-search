@@ -1,104 +1,104 @@
-# Pesquisa rápida de favoritos
+# Quick Favorites Search
 
-Extensão para Microsoft Edge que substitui a página de nova tab por uma interface de pesquisa rápida.
+Microsoft Edge extension that replaces the new tab page with a fast search interface.
 
-Permite pesquisar, ao mesmo tempo, nos favoritos e no histórico recente do navegador, gerir atalhos e adicionar novos favoritos de forma organizada.
+It lets you search your bookmarks and recent browsing history at the same time, manage shortcuts, and add new bookmarks in an organized way.
 
-## Funcionalidades
+## Features
 
-- Pesquisa instantânea em favoritos e histórico.
-- Pesquisa sem distinção entre maiúsculas e minúsculas e sem considerar acentos.
-- Pesquisa por título, URL, pasta e descrição da página.
-- Resultados agrupados por domínio.
-- Até 60 resultados por categoria.
-- Histórico limitado às 500 entradas mais recentes.
-- Atalhos configuráveis na barra da nova tab.
-- Adição, edição e remoção de favoritos e atalhos.
-- Organização automática de favoritos em pasta por domínio.
-- Pesquisa opcional no Google.
-- Navegação direta para o primeiro resultado com a tecla `Enter`.
-- Pesquisa no Google com `Alt + Enter`.
+- Instant search across bookmarks and history.
+- Case-insensitive and accent-insensitive search.
+- Search by title, URL, folder, and page description.
+- Results grouped by domain.
+- Up to 60 results per category.
+- History limited to the 500 most recent entries.
+- Configurable shortcuts on the new tab bar.
+- Add, edit, and remove bookmarks and shortcuts.
+- Automatic organization of bookmarks into folders by domain.
+- Optional Google search.
+- Navigate directly to the first result with the `Enter` key.
+- Search on Google with `Alt + Enter`.
 
-## Tecnologias
+## Technologies
 
-- JavaScript moderno, sem frameworks.
-- HTML5 e CSS3.
+- Modern JavaScript, no frameworks.
+- HTML5 and CSS3.
 - Manifest V3.
-- APIs de extensão do Microsoft Edge/Chrome:
+- Microsoft Edge/Chrome extension APIs:
   - `chrome.bookmarks`
   - `chrome.history`
   - `chrome.storage`
   - `chrome.tabs`
   - `chrome.action`
 
-Não é necessário instalar dependências, executar compilação ou utilizar um servidor externo.
+No dependencies to install, no build step, and no external server required.
 
-## Especificações técnicas
+## Technical Details
 
-- A página inicial da aplicação é `index.html`.
-- `app.js` contém a interface e a lógica de pesquisa.
-- `background.js` abre a aplicação quando o utilizador seleciona o ícone da extensão.
-- `manifest.json` define as permissões e a substituição da página de nova tab.
-- Os atalhos são guardados numa pasta chamada `favorites-search`, diretamente na barra de favoritos.
-- Os favoritos adicionados são organizados numa pasta principal `Organizados` e em subpastas por domínio.
-- As descrições das páginas são guardadas localmente através de `chrome.storage.local`.
-- São obtidas descrições e ícones das páginas, sempre que possível, através de pedidos HTTP/HTTPS.
-- A aplicação é específica do perfil Edge ativo e não envia os favoritos ou o histórico para um servidor próprio.
-- Um máximo de 19 atalhos é apresentado na página inicial.
+- The application home page is `index.html`.
+- `app.js` contains the interface and search logic.
+- `background.js` opens the application when the user clicks the extension icon.
+- `manifest.json` defines permissions and new tab page replacement.
+- Shortcuts are stored in a folder named `favorites-search` directly on the bookmarks bar.
+- Added bookmarks are organized in a main `Organizados` folder and subfolders by domain.
+- Page descriptions are stored locally via `chrome.storage.local`.
+- Descriptions and icons are fetched from pages whenever possible via HTTP/HTTPS requests.
+- The application is specific to the active Edge profile and does not send bookmarks or history to any external server.
+- A maximum of 19 shortcuts is shown on the home page.
 
-## Instalação para desenvolvimento
+## Installation for Development
 
-1. Abra o Microsoft Edge.
-2. Aceda a `edge://extensions/`.
-3. Ative o **Modo de programador**.
-4. Selecione **Carregar descontraidamente** ou **Load unpacked**.
-5. Escolha a pasta que contém este projeto.
-6. Abra uma nova tab.
+1. Open Microsoft Edge.
+2. Go to `edge://extensions/`.
+3. Enable **Developer mode**.
+4. Select **Load unpacked**.
+5. Choose the folder containing this project.
+6. Open a new tab.
 
-Também pode selecionar o ícone da extensão na barra de ferramentas para abrir a aplicação numa nova tab.
+You can also click the extension icon in the toolbar to open the application in a new tab.
 
-## Como usar
+## How to Use
 
-### Pesquisar
+### Search
 
-1. Escreva no campo de pesquisa.
-2. Os favoritos e o histórico são filtrados automaticamente.
-3. Selecione um resultado para abrir o respetivo endereço.
-4. Utilize `Enter` para abrir o primeiro resultado encontrado.
-5. Utilize `Alt + Enter` para pesquisar a expressão no Google.
-6. Selecione **Pesquisar no Google** para executar manualmente uma pesquisa externa.
+1. Type in the search field.
+2. Bookmarks and history are filtered automatically.
+3. Select a result to open the corresponding address.
+4. Press `Enter` to open the first matching result.
+5. Press `Alt + Enter` to search the query on Google.
+6. Select **Search on Google** to run an external search manually.
 
-### Adicionar um favorito
+### Add a Bookmark
 
-1. Selecione o botão `+` junto ao campo de pesquisa.
-2. Indique o nome e o endereço.
-3. Selecione **Adicionar**.
+1. Click the `+` button next to the search field.
+2. Enter the name and address.
+3. Select **Add**.
 
-A aplicação tenta localizar uma pasta adequada pelo nome ou pelo domínio. Caso não exista, cria uma estrutura em `Organizados / domínio`.
+The application tries to find a suitable folder by name or domain. If none exists, it creates a structure under `Organizados / domain`.
 
-Também pode adicionar uma página diretamente a partir do histórico através do botão `+` apresentado ao lado do respetivo resultado.
+You can also add a page directly from history using the `+` button shown next to the result.
 
-### Gerir atalhos
+### Manage Shortcuts
 
-1. Selecione **Adicionar atalho**.
-2. Introduza o endereço do novo atalho.
-3. Selecione o atalho para o abrir em nova tab.
+1. Select **Add shortcut**.
+2. Enter the address of the new shortcut.
+3. Click the shortcut to open it in a new tab.
 
-Para editar ou remover:
+To edit or remove:
 
-1. Clique com o botão direito no atalho.
-2. Selecione **Editar** para alterar o nome ou o endereço.
-3. Selecione **Remover** para eliminar o atalho.
+1. Right-click the shortcut.
+2. Select **Edit** to change the name or address.
+3. Select **Remove** to delete the shortcut.
 
-Os atalhos são armazenados na pasta `favorites-search` da barra de favoritos.
+Shortcuts are stored in the `favorites-search` folder on the bookmarks bar.
 
-## Permissões
+## Permissions
 
-- `bookmarks`: consultar, criar, alterar e remover favoritos.
-- `history`: consultar o histórico recente.
-- `storage`: guardar localmente descrições de páginas.
-- `http://*/*` e `https://*/*`: obter descrições e ícones das páginas.
+- `bookmarks`: read, create, update, and remove bookmarks.
+- `history`: read recent browsing history.
+- `storage`: store page descriptions locally.
+- `http://*/*` and `https://*/*`: fetch page descriptions and icons.
 
-## Compatibilidade
+## Compatibility
 
-A aplicação foi criada para Microsoft Edge com arquitetura Manifest V3. Poderá também funcionar em navegadores compatíveis com APIs `chrome.*`, embora a configuração oficial indicada seja o Edge.
+The application was built for Microsoft Edge using Manifest V3. It may also work in browsers compatible with the `chrome.*` APIs, although the officially supported configuration is Edge.
