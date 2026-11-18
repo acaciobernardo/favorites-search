@@ -88,10 +88,12 @@ function findFolderByTitle(node, title) {
 }
 
 async function getShortcutsFolder(tree) {
-  const existingFolder = findFolderByTitle(tree, "favorites-search");
-  if (existingFolder) return existingFolder;
   const bookmarkBar = findBookmarkBar(tree);
   if (!bookmarkBar) return null;
+  // Prefer the folder that is a direct child of the bookmarks bar
+  const inBar = (bookmarkBar.children || []).find(child => !child.url && child.title === "favorites-search");
+  if (inBar) return inBar;
+  // Create it in the bar if it doesn't exist there
   return chrome.bookmarks.create({
     parentId: bookmarkBar.id,
     title: "favorites-search"
@@ -150,8 +152,10 @@ function getShortcutIconSources(item, faviconUrl) {
     return [`data:image/svg+xml,${encodeURIComponent(mapfreIcon)}`];
   }
   const hostname = faviconUrl.hostname;
+  const fullUrl = item.url;
   return [
-    `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`,
+    `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=128`,
+    `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(fullUrl)}&size=64`,
     `https://icons.duckduckgo.com/ip3/${encodeURIComponent(hostname)}.ico`,
     `${faviconUrl.origin}/favicon.ico`
   ];
@@ -546,7 +550,10 @@ async function loadBrowserData() {
     }
     const tree = await chrome.bookmarks.getTree();
     favorites = flattenFavorites(tree).filter(item => /^https?:/i.test(item.url));
-    const shortcutsFolder = findFolderByTitle(tree, "favorites-search");
+    const bookmarkBar = findBookmarkBar(tree);
+    const shortcutsFolder = bookmarkBar
+      ? (bookmarkBar.children || []).find(child => !child.url && child.title === "favorites-search")
+      : null;
     const shortcuts = (shortcutsFolder?.children || [])
       .filter(item => item.url && /^https?:/i.test(item.url))
       .map(item => ({ id: item.id, title: item.title || item.url, url: item.url }));
