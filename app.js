@@ -151,14 +151,59 @@ function getShortcutIconSources(item, faviconUrl) {
       </svg>`;
     return [`data:image/svg+xml,${encodeURIComponent(mapfreIcon)}`];
   }
+
   const hostname = faviconUrl.hostname;
+  const origin = faviconUrl.origin;
   const fullUrl = item.url;
-  return [
-    `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=128`,
-    `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(fullUrl)}&size=64`,
-    `https://icons.duckduckgo.com/ip3/${encodeURIComponent(hostname)}.ico`,
-    `${faviconUrl.origin}/favicon.ico`
+
+  // Sites internos / privados: tenta primeiro o favicon do próprio domínio
+  const isLikelyInternal = /mapfre|\.(rede|local|intranet|internal)$/i.test(hostname) || hostname.split(".").length > 3;
+
+  const originPaths = [
+    `${origin}/favicon.ico`,
+    `${origin}/favicon.png`,
+    `${origin}/apple-touch-icon.png`,
+    `${origin}/apple-touch-icon-precomposed.png`,
+    `${origin}/static/favicon.ico`,
+    `${origin}/assets/favicon.ico`
   ];
+
+  const publicSources = [
+    `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=128`,
+    `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(fullUrl)}&sz=128`,
+    `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(fullUrl)}&size=64`,
+    `https://icons.duckduckgo.com/ip3/${encodeURIComponent(hostname)}.ico`
+  ];
+
+  return isLikelyInternal
+    ? [...originPaths, ...publicSources]
+    : [...publicSources, ...originPaths];
+}
+
+async function resolveBestIconUrl(url) {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(url, { credentials: "include", signal: controller.signal });
+    clearTimeout(timer);
+    if (!response.ok) return null;
+    const html = (await response.text()).slice(0, 150000);
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const links = [...doc.querySelectorAll('link[rel*="icon" i], link[rel*="apple-touch" i]')];
+    const scored = links.map(link => {
+      const href = link.getAttribute("href");
+      if (!href) return null;
+      const sizes = link.getAttribute("sizes") || "";
+      const size = parseInt(sizes.split("x")[0]) || (href.includes("apple") ? 180 : 32);
+      return { href, size };
+    }).filter(Boolean).sort((a, b) => b.size - a.size);
+    if (scored.length) {
+      return new URL(scored[0].href, url).href;
+    }
+  } catch (e) {
+    console.debug("Icon fetch failed for", url, e);
+  }
+  return null;
 }
 
 function renderShortcuts(items) {
@@ -197,6 +242,13 @@ function renderShortcuts(items) {
     });
     image.src = faviconSources[0];
     icon.appendChild(image);
+
+    // Try to resolve a better icon from the page itself (works for internal sites)
+    resolveBestIconUrl(item.url).then(betterUrl => {
+      if (betterUrl && image.parentNode) {
+        image.src = betterUrl;
+      }
+    });
 
     const title = document.createElement("span");
     title.className = "shortcut-title";
