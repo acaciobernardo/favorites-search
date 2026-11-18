@@ -400,14 +400,16 @@
   </main>
 
   <div id="shortcut-menu" class="shortcut-menu hidden">
-    <button id="rename-shortcut" type="button">✎&nbsp; Mudar o nome</button>
-    <button id="remove-shortcut" class="remove" type="button">♧&nbsp; Remover</button>
+    <button id="rename-shortcut" type="button">✎&nbsp; Editar</button>
+    <button id="remove-shortcut" class="remove" type="button">♣&nbsp; Remover</button>
   </div>
   <div id="rename-modal" class="modal-backdrop hidden" role="presentation">
     <form id="rename-form" class="modal" role="dialog" aria-modal="true" aria-labelledby="rename-modal-title">
-      <h2 id="rename-modal-title">Mudar o nome</h2>
+      <h2 id="rename-modal-title">Editar atalho</h2>
       <label for="shortcut-title-input">Nome do atalho</label>
       <input id="shortcut-title-input" type="text" autocomplete="off" required>
+      <label for="shortcut-url-edit">Link do atalho</label>
+      <input id="shortcut-url-edit" type="url" inputmode="url" placeholder="https://exemplo.pt" autocomplete="off" required>
       <p id="rename-error" class="modal-error" aria-live="polite"></p>
       <div class="modal-actions">
         <button id="rename-cancel" type="button">Cancelar</button>
@@ -442,6 +444,6 @@
     </form>
   </div>
 
-  <script src="app.js?v=6"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
