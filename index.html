@@ -403,6 +403,10 @@
     <button id="rename-shortcut" type="button">✎&nbsp; Editar</button>
     <button id="remove-shortcut" class="remove" type="button">♣&nbsp; Remover</button>
   </div>
+  <div id="result-favorite-menu" class="shortcut-menu hidden">
+    <button id="edit-result-favorite" type="button">✎&nbsp; Editar</button>
+    <button id="remove-result-favorite" class="remove" type="button">♣&nbsp; Eliminar</button>
+  </div>
   <div id="rename-modal" class="modal-backdrop hidden" role="presentation">
     <form id="rename-form" class="modal" role="dialog" aria-modal="true" aria-labelledby="rename-modal-title">
       <h2 id="rename-modal-title">Editar atalho</h2>
@@ -427,7 +431,7 @@
       <p id="favorite-error" class="modal-error" aria-live="polite"></p>
       <div class="modal-actions">
         <button id="favorite-cancel" type="button">Cancelar</button>
-        <button class="confirm" type="submit">Adicionar</button>
+        <button id="favorite-confirm" class="confirm" type="submit">Adicionar</button>
       </div>
     </form>
   </div>
@@ -444,6 +448,6 @@
     </form>
   </div>
 
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

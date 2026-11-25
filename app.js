@@ -25,14 +25,21 @@ const RETRY_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 let descriptions = {};
 const expandedGroups = new WeakMap();
 let selectedShortcut = null;
+let selectedFavorite = null;
 let renameTarget = null;
 const favoriteModal = document.querySelector("#favorite-modal");
 const favoriteForm = document.querySelector("#favorite-form");
 const favoriteUrlInput = document.querySelector("#favorite-url");
 const favoriteNameInput = document.querySelector("#favorite-name");
+const favoriteModalTitle = document.querySelector("#favorite-modal-title");
+const favoriteConfirmButton = document.querySelector("#favorite-confirm");
 const addedMessage = document.querySelector("#added-message");
 const favoriteError = document.querySelector("#favorite-error");
+const resultFavoriteMenu = document.querySelector("#result-favorite-menu");
+const editResultFavoriteButton = document.querySelector("#edit-result-favorite");
+const removeResultFavoriteButton = document.querySelector("#remove-result-favorite");
 const ORGANIZED_ROOT = "Organizados";
+let editingFavorite = null;
 
 function normalize(value) {
   return String(value || "").toLocaleLowerCase("pt-PT").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -44,7 +51,7 @@ function flattenFavorites(node, output = [], folder = "") {
     return output;
   }
   if (!node || typeof node !== "object") return output;
-  if (node.url) output.push({ title: node.title || node.url, url: node.url, folder });
+  if (node.url) output.push({ id: node.id, title: node.title || node.url, url: node.url, folder });
   const nextFolder = node.title ? (folder ? `${folder} / ${node.title}` : node.title) : folder;
   (node.children || []).forEach(child => flattenFavorites(child, output, nextFolder));
   return output;
@@ -114,6 +121,39 @@ function closeShortcutModal() {
 function closeShortcutMenu() {
   shortcutMenu.classList.add("hidden");
   selectedShortcut = null;
+}
+
+function closeResultFavoriteMenu() {
+  resultFavoriteMenu.classList.add("hidden");
+  selectedFavorite = null;
+}
+
+function openResultFavoriteMenu(event, item) {
+  event.preventDefault();
+  event.stopPropagation();
+  selectedFavorite = item;
+  resultFavoriteMenu.style.left = `${Math.max(0, Math.min(event.clientX, window.innerWidth - 150))}px`;
+  resultFavoriteMenu.style.top = `${Math.max(0, Math.min(event.clientY, window.innerHeight - 80))}px`;
+  resultFavoriteMenu.classList.remove("hidden");
+}
+
+function openFavoriteEditModal(item) {
+  closeResultFavoriteMenu();
+  editingFavorite = item;
+  favoriteModalTitle.textContent = "Editar favorito";
+  favoriteConfirmButton.textContent = "Guardar";
+  favoriteError.textContent = "";
+  favoriteUrlInput.value = item.url;
+  favoriteNameInput.value = item.title || "";
+  favoriteModal.classList.remove("hidden");
+  favoriteNameInput.focus();
+}
+
+function closeFavoriteModal() {
+  favoriteModal.classList.add("hidden");
+  editingFavorite = null;
+  favoriteModalTitle.textContent = "Adicionar favorito";
+  favoriteConfirmButton.textContent = "Adicionar";
 }
 
 function openRenameModal() {
@@ -471,6 +511,9 @@ function showAddedMessage(path, title, href) {
 }
 
 function openFavoriteModal(url = "", name = "") {
+  editingFavorite = null;
+  favoriteModalTitle.textContent = "Adicionar favorito";
+  favoriteConfirmButton.textContent = "Adicionar";
   favoriteError.textContent = "";
   favoriteUrlInput.value = url;
   favoriteNameInput.value = name;
@@ -511,6 +554,9 @@ function renderList(target, items, type) {
       const link = document.createElement("a");
       link.className = "result";
       link.href = item.url;
+      if (type === "favoritos") {
+        link.addEventListener("contextmenu", event => openResultFavoriteMenu(event, item));
+      }
       const title = document.createElement("div");
       title.className = "result-title";
       title.textContent = item.title || item.url;
@@ -695,8 +741,24 @@ removeShortcutButton.addEventListener("click", async () => {
     console.error(error);
   }
 });
+editResultFavoriteButton.addEventListener("click", () => {
+  if (selectedFavorite) openFavoriteEditModal(selectedFavorite);
+});
+removeResultFavoriteButton.addEventListener("click", async () => {
+  if (!selectedFavorite || typeof chrome === "undefined" || !chrome.bookmarks) return;
+  const item = selectedFavorite;
+  closeResultFavoriteMenu();
+  try {
+    await chrome.bookmarks.remove(item.id);
+    await loadBrowserData();
+  } catch (error) {
+    status.textContent = "Não foi possível eliminar o favorito.";
+    console.error(error);
+  }
+});
 document.addEventListener("click", event => {
   if (!shortcutMenu.contains(event.target)) closeShortcutMenu();
+  if (!resultFavoriteMenu.contains(event.target)) closeResultFavoriteMenu();
 });
 shortcutModal.addEventListener("click", event => {
   if (event.target === shortcutModal) closeShortcutModal();
@@ -745,16 +807,27 @@ document.querySelector("#add-favorite").addEventListener("click", () => {
   const match = findMatches(history, query).find(item => !saved.has(stripQuery(item.url)));
   openFavoriteModal(match?.url || "", match?.title || "");
 });
-document.querySelector("#favorite-cancel").addEventListener("click", () => favoriteModal.classList.add("hidden"));
+document.querySelector("#favorite-cancel").addEventListener("click", closeFavoriteModal);
 favoriteModal.addEventListener("click", event => {
-  if (event.target === favoriteModal) favoriteModal.classList.add("hidden");
+  if (event.target === favoriteModal) closeFavoriteModal();
 });
 favoriteForm.addEventListener("submit", async event => {
   event.preventDefault();
-  favoriteError.textContent = "A adicionar…";
+  favoriteError.textContent = editingFavorite ? "A guardar…" : "A adicionar…";
   try {
-    await addFavorite(favoriteUrlInput.value.trim(), favoriteNameInput.value.trim());
-    favoriteModal.classList.add("hidden");
+    if (editingFavorite) {
+      const url = new URL(favoriteUrlInput.value.trim());
+      if (!/^https?:$/.test(url.protocol)) throw new Error("O link deve começar por http:// ou https://.");
+      await chrome.bookmarks.update(editingFavorite.id, {
+        title: favoriteNameInput.value.trim(),
+        url: url.href
+      });
+      closeFavoriteModal();
+      await loadBrowserData();
+    } else {
+      await addFavorite(favoriteUrlInput.value.trim(), favoriteNameInput.value.trim());
+      closeFavoriteModal();
+    }
   } catch (error) {
     favoriteError.textContent = error instanceof TypeError ? "Introduza um link válido." : error.message;
   }
